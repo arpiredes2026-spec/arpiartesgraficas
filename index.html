@@ -460,7 +460,11 @@ textarea.input{resize:vertical;min-height:90px}
 .cover-label{position:absolute;font-family:var(--display);font-size:clamp(1rem,1.5vw,1.25rem);font-weight:700;line-height:1.05;letter-spacing:-.01em;transform:translateY(-100%)}
 .cover-label .serif{font-weight:400;font-size:1.15em}
 .cover-top{position:absolute;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;font-size:.78rem;color:rgba(255,255,255,.65);letter-spacing:.04em}
-.cover-head{position:absolute;left:0;right:0;bottom:13vh;padding:0 20px;text-align:center;opacity:0}
+.cover-head{position:absolute;left:0;right:0;bottom:calc(11vh + 60px);padding:0 20px;text-align:center;opacity:0}
+.cue2{position:absolute;bottom:22px;left:50%;z-index:2;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-shadow:0 1px 10px rgba(0,0,0,.45);opacity:0;pointer-events:none}
+.cue2.on{pointer-events:auto}
+.cue2 i{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:.9rem;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 .cover-head h1{font-size:clamp(2.7rem,8vw,7.4rem);color:#fff}
 .cover-head p{color:rgba(255,255,255,.82);margin-top:16px;font-size:clamp(1rem,1.6vw,1.2rem)}
 .cue{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);font-size:.7rem;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.6);display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -616,6 +620,7 @@ textarea.input{resize:vertical;min-height:90px}
         <p>Litografía offset, impresión digital, diseño y acabados en el Eje Cafetero.</p>
       </div>
       <div class="cue" aria-hidden="true">Desplácese</div>
+      <a class="cue2" href="#inicio"><span>Siga bajando</span><i class="fa-solid fa-chevron-down"></i></a>
     </div>
   </section>
 
@@ -1079,7 +1084,7 @@ textarea.input{resize:vertical;min-height:90px}
     const y = scrollY, h = document.documentElement.scrollHeight - innerHeight;
     hdr.classList.toggle('scrolled', y > 10);
     bar.style.width = (h > 0 ? y / h * 100 : 0) + '%';
-    toTop.classList.toggle('show', y > 900);
+    toTop.classList.toggle('show', y > document.getElementById('portada').offsetHeight);
   };
   addEventListener('scroll', onScroll, { passive: true });
   onScroll();
@@ -1535,7 +1540,7 @@ textarea.input{resize:vertical;min-height:90px}
   // Portada: marco, líneas de construcción y puntos CMYK que forman "ARPI"
   const cover = $('#portada'), pin = $('.cover-pin', cover), cImg = $('.cover-img', cover),
     frame = $('.cover-frame', cover), lines = $('.cover-lines', cover), canvas = $('.cover-dots', cover),
-    label = $('.cover-label', cover), head = $('.cover-head', cover), cue = $('.cue', cover), cTop = $('.cover-top', cover);
+    label = $('.cover-label', cover), head = $('.cover-head', cover), cue = $('.cue', cover), cue2 = $('.cue2', cover), cTop = $('.cover-top', cover);
   const ctx = canvas.getContext('2d');
   const INK = ['#00aeef', '#ec008c', '#fff200', '#ffffff'];
   let W = 0, H = 0, FR = null, dots = [], coverP = 0, t0 = performance.now(), coverOn = true, firstLayout = true;
@@ -1621,7 +1626,7 @@ textarea.input{resize:vertical;min-height:90px}
         // Colibrí del logo: se arma desde la tinta, aletea y sigue un poco al cursor
         float A=0.;
         if(hb>.5){
-          vec2 bc=vec2(0.,.15)+mp*.04+vec2(0.,sin(t*1.3)*.01);
+          vec2 bc=vec2(0.,.15+max(0.,r.y/r.x-1.)*.2)+mp*.04+vec2(0.,sin(t*1.3)*.01);
           vec2 bu=(p-bc)/.68+.5;
           float wing=smoothstep(.62,.05,bu.x);
           bu.y+=wing*sin(t*7.)*.03*(1.-bu.x);
@@ -1711,6 +1716,8 @@ textarea.input{resize:vertical;min-height:90px}
     head.style.opacity = hp;
     head.style.transform = `translateY(${(1 - hp) * 40}px)`;
     cue.style.opacity = 1 - seg(p, 0, .08);
+    cue2.style.opacity = hp;
+    cue2.classList.toggle('on', hp > .5);
     cTop.style.opacity = 1 - seg(p, .5, .7);
 
     ctx.clearRect(0, 0, W, H);
@@ -1751,6 +1758,32 @@ textarea.input{resize:vertical;min-height:90px}
   pillToggle.addEventListener('click', () => setPill(!pill.classList.contains('open')));
   $$('a', pillMenu).forEach(a => a.addEventListener('click', () => setPill(false)));
   let curCh = -1;
+
+  // En pantallas táctiles, apenas el cliente empieza a bajar, la portada se reproduce sola
+  // hasta dejar a la vista el colibrí y el titular (sin tener que deslizar tanto).
+  const coverStop = k => cover.offsetTop + (cover.offsetHeight - innerHeight) * k;
+  let autoState = 'idle', lastY = scrollY;
+  const holdScroll = e => { if (autoState === 'playing') e.preventDefault(); };
+  addEventListener('touchmove', holdScroll, { passive: false });
+  addEventListener('wheel', holdScroll, { passive: false });
+  const playCover = () => {
+    autoState = 'playing';
+    const from = scrollY, to = coverStop(.94), dur = 2600, start = performance.now();
+    const step = now => {
+      if (autoState !== 'playing') return;
+      const k = clamp01((now - start) / dur);
+      const e2 = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      scrollTo({ top: from + (to - from) * e2, behavior: 'instant' });
+      if (k < 1) requestAnimationFrame(step); else autoState = 'done';
+    };
+    requestAnimationFrame(step);
+  };
+  if (matchMedia('(pointer: coarse)').matches && !reduce) addEventListener('scroll', () => {
+    const y = scrollY, down = y > lastY;
+    lastY = y;
+    if (autoState === 'idle' && down && y > 4 && y < coverStop(.5)) playCover();
+    if (autoState === 'done' && y < 4) autoState = 'idle';
+  }, { passive: true });
 
   // Todo lo que depende del scroll, en un solo frame
   const drifts = $$('[data-drift]'), pars = $$('[data-parallax]');
