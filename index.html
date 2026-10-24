@@ -1761,13 +1761,14 @@ textarea.input{resize:vertical;min-height:90px}
   $$('a', pillMenu).forEach(a => a.addEventListener('click', () => setPill(false)));
   let curCh = -1;
 
-  // En pantallas táctiles, apenas el cliente empieza a bajar, la portada se reproduce sola
-  // hasta dejar a la vista el colibrí y el titular (sin tener que deslizar tanto).
+  // Apenas el cliente empieza a bajar (dedo, rueda o teclado), la portada se reproduce sola
+  // hasta dejar a la vista el colibrí y el titular (sin tener que bajar tanto).
   const coverStop = k => cover.offsetTop + (cover.offsetHeight - innerHeight) * k;
   let autoState = 'idle', lastY = scrollY;
   const holdScroll = e => { if (autoState === 'playing') e.preventDefault(); };
   addEventListener('touchmove', holdScroll, { passive: false });
   addEventListener('wheel', holdScroll, { passive: false });
+  addEventListener('keydown', e => { if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Space', 'Home', 'End'].includes(e.code)) holdScroll(e); });
   const playCover = () => {
     autoState = 'playing';
     const from = scrollY, to = coverStop(.94), dur = 2600, start = performance.now();
@@ -1780,7 +1781,7 @@ textarea.input{resize:vertical;min-height:90px}
     };
     requestAnimationFrame(step);
   };
-  if (matchMedia('(pointer: coarse)').matches && !reduce) addEventListener('scroll', () => {
+  if (!reduce) addEventListener('scroll', () => {
     const y = scrollY, down = y > lastY;
     lastY = y;
     if (autoState === 'idle' && down && y > 4 && y < coverStop(.5)) playCover();
