@@ -45,8 +45,8 @@
   --display:'Bricolage Grotesque',system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html{scroll-behavior:smooth;scroll-padding-top:84px;overflow-x:clip}
+body{font-family:Inter,system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:clip}
 img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -363,6 +363,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.04;letter-spacing:-.025em;font
 /* Cotizador */
 .quote-sec{background:var(--paper-2)}
 .quote{display:grid;grid-template-columns:1.15fr .85fr;gap:36px;margin-top:48px;align-items:start}
+.quote>*,.form>*{min-width:0}
+.form .btn{max-width:100%;white-space:normal;text-align:center}
 .form{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:34px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .field{display:flex;flex-direction:column;gap:8px}
 .field.full{grid-column:1/-1}
