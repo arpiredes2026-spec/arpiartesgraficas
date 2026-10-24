@@ -108,7 +108,8 @@ h1,h2,h3{font-family:var(--display);line-height:1.04;letter-spacing:-.025em;font
 
 /* Hoja en registro */
 .press{position:relative;background:var(--card);border:1px solid var(--line);border-radius:30px;padding:22px;box-shadow:var(--shadow);touch-action:manipulation}
-.sheet{position:relative;aspect-ratio:1/1;border-radius:18px;background:var(--paper);display:grid;place-items:center;overflow:hidden;cursor:crosshair}
+.sheet{position:relative;aspect-ratio:1/1;border-radius:18px;background:var(--paper);display:grid;place-items:center;overflow:hidden;cursor:crosshair;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.sheet.dragging .reg .l{transition-duration:.15s}
 .sheet::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(20,20,20,.08) 1px,transparent 1.3px);background-size:14px 14px}
 .crop{position:absolute;width:26px;height:26px;opacity:.55}
 .crop.tl{top:16px;left:16px;border-top:1.5px solid var(--ink);border-left:1.5px solid var(--ink)}
@@ -662,7 +663,7 @@ textarea.input{resize:vertical;min-height:90px}
         <div class="strip" aria-hidden="true">
           <span style="background:var(--c)">C</span><span style="background:var(--m)">M</span><span style="background:var(--y)">Y</span><span style="background:var(--ink);color:#fff">K</span><span style="background:#2e3192;color:#fff">C+M</span><span style="background:#ed1c24;color:#fff">M+Y</span>
         </div>
-        <p class="press-hint"><i class="fa-solid fa-hand-pointer"></i><span class="hint-mouse">Pase el cursor por la hoja: así se ve una impresión fuera de registro.</span><span class="hint-touch">Toque la hoja: así se ve una impresión fuera de registro.</span></p>
+        <p class="press-hint"><i class="fa-solid fa-hand-pointer"></i><span class="hint-mouse">Pase el cursor por la hoja: así se ve una impresión fuera de registro.</span><span class="hint-touch">Deje el dedo sobre la hoja y muévalo: así se ve una impresión fuera de registro.</span></p>
       </div>
     </div>
   </section>
@@ -1138,19 +1139,42 @@ textarea.input{resize:vertical;min-height:90px}
     regStatus.classList.toggle('off', off);
     $('b', regStatus).textContent = off ? 'Fuera de registro' : 'En registro';
   };
-  sheet.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse') return;
+  const regAt = (x, y) => {
     const r = sheet.getBoundingClientRect();
     const clamp = v => Math.max(-1, Math.min(1, v));
-    setReg(clamp(((e.clientX - r.left) / r.width - .5) * 2), clamp(((e.clientY - r.top) / r.height - .5) * 2));
-  });
-  sheet.addEventListener('pointerleave', () => setReg(0, 0));
-  sheet.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'mouse') return;
-    setReg(Math.random() * 2 - 1, Math.random() * 2 - 1);
-    clearTimeout(setReg.t);
-    setReg.t = setTimeout(() => setReg(0, 0), 900);
-  });
+    setReg(clamp(((x - r.left) / r.width - .5) * 2), clamp(((y - r.top) / r.height - .5) * 2));
+  };
+  sheet.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') regAt(e.clientX, e.clientY); });
+  sheet.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') setReg(0, 0); });
+  // En celular: dejar el dedo un instante sobre la hoja y moverlo separa los colores, igual que el cursor.
+  // Un deslizamiento rápido sigue bajando la página; un toque corto da un "salto" de color.
+  let holdT = null, holding = false, moved = false, tx = 0, ty = 0;
+  sheet.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    tx = t.clientX; ty = t.clientY; moved = false;
+    clearTimeout(holdT);
+    holdT = setTimeout(() => { holding = true; sheet.classList.add('dragging'); regAt(tx, ty); }, 180);
+  }, { passive: true });
+  sheet.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (holding) { e.preventDefault(); regAt(t.clientX, t.clientY); return; }
+    if (Math.hypot(t.clientX - tx, t.clientY - ty) > 8) { moved = true; clearTimeout(holdT); }
+  }, { passive: false });
+  const releaseSheet = () => {
+    clearTimeout(holdT);
+    if (holding) {
+      holding = false;
+      sheet.classList.remove('dragging');
+      setReg(0, 0);
+    } else if (!moved) {
+      setReg(Math.random() * 2 - 1, Math.random() * 2 - 1);
+      clearTimeout(setReg.t);
+      setReg.t = setTimeout(() => setReg(0, 0), 900);
+    }
+  };
+  sheet.addEventListener('touchend', releaseSheet);
+  sheet.addEventListener('touchcancel', releaseSheet);
+  sheet.addEventListener('contextmenu', e => e.preventDefault());
   // Al cargar, los colores "caen en registro"
   if (!reduce) { setReg(1, .8); setTimeout(() => setReg(0, 0), 700); }
 
